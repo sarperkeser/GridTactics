@@ -294,7 +294,8 @@ void SpawnStairs(Registry& registry, int x, int y) {
 
 int main() {
 
-
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "GridTactics");
+    SetTargetFPS(60);
     
     InitAudioDevice();
 
@@ -302,6 +303,18 @@ int main() {
     //Music bgm = LoadMusicStream("../assets/bgm.ogg");
     //PlayMusicStream(bgm);
 
+
+
+    // 1. 2D DOKULARI GPU BELLEĞİNE YÜKLE
+    GameTextures textures;
+    textures.floor       = LoadGameTexture("../assets/floor.png");
+    textures.wall        = LoadGameTexture("../assets/wall.png");
+    textures.player      = LoadGameTexture("../assets/player.png");
+    textures.meleeEnemy  = LoadGameTexture("../assets/melee_enemy.png");
+    textures.archerEnemy = LoadGameTexture("../assets/archer_enemy.png");
+    textures.potion      = LoadGameTexture("../assets/potion.png");
+    textures.boost       = LoadGameTexture("../assets/boost.png");
+    textures.stairs      = LoadGameTexture("../assets/stairs.png");
 
     // --- map ---
     // vector<vector<int>> map(GRID_SIZE, vector<int>(GRID_SIZE, 0));
@@ -315,8 +328,7 @@ int main() {
 
 
 
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "GridTactics");
-    SetTargetFPS(60);
+
 
     
 
@@ -333,34 +345,35 @@ int main() {
         // make player (Entity ID: 1)
         uint32_t player = registry.createEntity();
         registry.positions[player] = Position{1, 1};      
-        registry.renderables[player] = Renderable{BLUE};  
+        registry.renderables[player] = Renderable{BLUE, textures.player};  
         registry.playerControllers[player] = PlayerController{};
         registry.stats[player] = Stats{100, 100, 15};
+        registry.rangedAbilities[player] = RangedAbility{4, 12, 3, 0};
 
         
         // create stairs
         uint32_t stairs = registry.createEntity();
         registry.positions[stairs] = Position{18, 18};
-        registry.renderables[stairs] = Renderable{GOLD};
+        registry.renderables[stairs] = Renderable{GOLD, textures.stairs};
         registry.stairs[stairs] = Stairs{};
 
 
         
         if (level == 1) {
-            SpawnEnemy(registry, 15, 2, player, AIType::MELEE_CHASER, RED);
-            SpawnEnemy(registry, 18, 10, player, AIType::RANGED_ARCHER, PURPLE);
+            SpawnEnemy(registry, 15, 2, player, AIType::MELEE_CHASER, RED, textures.meleeEnemy);
+            SpawnEnemy(registry, 18, 10, player, AIType::RANGED_ARCHER, PURPLE, textures.archerEnemy);
 
-            SpawnItem(registry, 5, 1, ItemType::ATTACK_BOOST, 5, ORANGE); 
-            SpawnItem(registry, 12, 9, ItemType::HEALTH_POTION, 20, LIME);
+            SpawnItem(registry, 5, 1, ItemType::ATTACK_BOOST, 5, ORANGE, textures.boost); 
+            SpawnItem(registry, 12, 9, ItemType::HEALTH_POTION, 20, LIME, textures.potion);
         } else {
             //second floor
-            SpawnEnemy(registry, 8, 3, player, AIType::MELEE_CHASER, RED);
-            SpawnEnemy(registry, 14, 9, player, AIType::RANGED_ARCHER, PURPLE);
-            SpawnEnemy(registry, 10, 18, player, AIType::RANGED_ARCHER, PURPLE);
+            SpawnEnemy(registry, 8, 3, player, AIType::MELEE_CHASER, RED, textures.meleeEnemy);
+            SpawnEnemy(registry, 14, 9, player, AIType::RANGED_ARCHER, PURPLE, textures.archerEnemy);
+            SpawnEnemy(registry, 10, 18, player, AIType::RANGED_ARCHER, PURPLE, textures.archerEnemy);
 
-            SpawnItem(registry, 18, 1, ItemType::ATTACK_BOOST, 5, ORANGE);
-            SpawnItem(registry, 3, 9, ItemType::HEALTH_POTION, 25, LIME);
-            SpawnItem(registry, 9, 9, ItemType::HEALTH_POTION, 25, LIME);
+            SpawnItem(registry, 18, 1, ItemType::ATTACK_BOOST, 5, ORANGE, textures.boost);
+            SpawnItem(registry, 3, 9, ItemType::HEALTH_POTION, 25, LIME, textures.potion);
+            SpawnItem(registry, 9, 9, ItemType::HEALTH_POTION, 25, LIME, textures.potion);
         }
 
         return loadedMap;
@@ -424,33 +437,56 @@ int main() {
 
 
         if (currentState == GameState::PLAYER_TURN) {
-            PlayerInputSystem(registry, map, currentState, GRID_SIZE,hitSound);
-            ItemPickupSystem(registry);
+            PlayerInputSystem(registry, map, currentState, GRID_SIZE,hitSound, CELL_SIZE);
+
+            if (currentState == GameState::PLAYER_TURN) {
+                PlayerAbilitySystem(registry, map, currentState, GRID_SIZE, CELL_SIZE, hitSound);
+            }
+
+            ItemPickupSystem(registry,CELL_SIZE);
         } 
         else if (currentState == GameState::ENEMY_TURN) {
             
             WaitTime(0.15f); 
-            AISystem(registry, map, currentState, GRID_SIZE,hitSound);
+            AISystem(registry, map, currentState, GRID_SIZE,hitSound, CELL_SIZE);
             // AISystem(registry, map, currentState, GRID_SIZE, hitSocket = hitSound, GRID_SIZE);
         }
         //PlayerInputSystem(registry, map);
-
-
+        UpdateFloatingTextSystem(registry, GetFrameTime());
+        
 
         BeginDrawing();
         
         ClearBackground(RAYWHITE);
 
+
+        
         // DrawText (text, X coordinate, Y coordinate, Font size, color)
         // DrawText("First test for draw text, hello world.", 190, 200, 20, BLACK);
 
+        // for (int y = 0; y < GRID_SIZE; y++) {
+        //     for (int x = 0; x < GRID_SIZE; x++) {
+        //         int pixelX = x * CELL_SIZE;
+        //         int pixelY = y * CELL_SIZE;
+        //         Color cellColor = (map[y][x] == 1) ? DARKGRAY : LIGHTGRAY;
+                
+        //         DrawRectangle(pixelX, pixelY, CELL_SIZE, CELL_SIZE, cellColor);
+        //         DrawRectangleLines(pixelX, pixelY, CELL_SIZE, CELL_SIZE, BLACK);
+        //     }
+        // }
+
         for (int y = 0; y < GRID_SIZE; y++) {
             for (int x = 0; x < GRID_SIZE; x++) {
-                int pixelX = x * CELL_SIZE;
-                int pixelY = y * CELL_SIZE;
-                Color cellColor = (map[y][x] == 1) ? DARKGRAY : LIGHTGRAY;
-                DrawRectangle(pixelX, pixelY, CELL_SIZE, CELL_SIZE, cellColor);
-                DrawRectangleLines(pixelX, pixelY, CELL_SIZE, CELL_SIZE, BLACK);
+                bool isWall = (map[y][x] == 1);
+                Texture2D tileTex = isWall ? textures.wall : textures.floor;
+                Color fallbackColor = isWall ? DARKGRAY : LIGHTGRAY;
+
+                DrawCellTexture(tileTex, x, y, CELL_SIZE, fallbackColor, false);
+                
+                // Doku yüklü değilse kare sınır çizgilerini koru
+                if (tileTex.id == 0) {
+                    DrawRectangleLines(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE, BLACK);
+                }
             }
         }
 
@@ -458,27 +494,51 @@ int main() {
         DrawText("M", 18 * CELL_SIZE + 10, 18 * CELL_SIZE + 8, 20, BLACK);
 
 
+        
         RenderSystem(registry,CELL_SIZE);
+        RenderFloatingTextSystem(registry);
+
+        if (currentState == GameState::PLAYER_TURN) {
+            RenderTargetingSystem(registry, map, GRID_SIZE, CELL_SIZE);
+        }
 
         // string levelText = "dungeon floor: " + to_string(currentLevel);
         // DrawText(levelText.c_str(), 10, 10, 20, DARKBLUE);
 
-        int playerHp = 0, playerMaxHp = 0, playerAtk = 0;
+        int playerHp = 0;
+        int playerMaxHp = 0;
+        int playerAtk = 0;
+        int spellCd = 0;
         for (auto& [entity, pc] : registry.playerControllers) {
             if (registry.stats.count(entity) > 0) {
                 playerHp = registry.stats[entity].hp;
                 playerMaxHp = registry.stats[entity].maxHp;
                 playerAtk = registry.stats[entity].attackPower;
             }
+            if (registry.rangedAbilities.count(entity) > 0) {
+                spellCd = registry.rangedAbilities[entity].currentCooldown;
+            }
         }
 
+        
+
+
+        DrawRectangle(0, 0, SCREEN_WIDTH, 28, Fade(BLACK, 0.65f));
         string statusText = "dungeon floor: " + to_string(currentLevel) + 
                                  " | Remaining Enemy: " + to_string(registry.aiControllers.size()) +
                                  " | health: " + to_string(playerHp) + "/" + to_string(playerMaxHp) +
                                  " | power: " + to_string(playerAtk);
 
         //string statusText = "dungeon floor: " + to_string(currentLevel) + " | Remaining Enemy: " + to_string(registry.aiControllers.size());
-        DrawText(statusText.c_str(), 10, 10, 20, DARKBLUE);
+        DrawText(statusText.c_str(), 10, 6, 18, WHITE);
+
+        DrawRectangle(0, SCREEN_HEIGHT - 28, SCREEN_WIDTH, 28, Fade(BLACK, 0.75f));
+        if (spellCd == 0) {
+            DrawText("Fireball (Left-Click): READY [Range: 4 | Damage: 12]", 10, SCREEN_HEIGHT - 22, 16, SKYBLUE);
+        } else {
+            std::string cdText = "Fireball: Cooldown (" + std::to_string(spellCd) + " round)";
+            DrawText(cdText.c_str(), 10, SCREEN_HEIGHT - 22, 16, LIGHTGRAY);
+        }
 
 
         if (currentState == GameState::GAME_OVER_WIN) {
@@ -503,6 +563,15 @@ int main() {
 
         EndDrawing();
     }
+
+    if (textures.floor.id > 0) UnloadTexture(textures.floor);
+    if (textures.wall.id > 0) UnloadTexture(textures.wall);
+    if (textures.player.id > 0) UnloadTexture(textures.player);
+    if (textures.meleeEnemy.id > 0) UnloadTexture(textures.meleeEnemy);
+    if (textures.archerEnemy.id > 0) UnloadTexture(textures.archerEnemy);
+    if (textures.potion.id > 0) UnloadTexture(textures.potion);
+    if (textures.boost.id > 0) UnloadTexture(textures.boost);
+    if (textures.stairs.id > 0) UnloadTexture(textures.stairs);
 
     UnloadSound(hitSound);
     //UnloadMusicStream(bgm);

@@ -21,6 +21,8 @@ public:
     std::unordered_map<uint32_t, Stairs> stairs;
 
     std::unordered_map<uint32_t, Item> items;
+    std::unordered_map<uint32_t, RangedAbility> rangedAbilities;
+    std::unordered_map<uint32_t, FloatingText> floatingTexts;
 
     // new ID 
     uint32_t createEntity() { return nextEntityId++; }
@@ -42,6 +44,8 @@ public:
         stats.erase(entity);
         stairs.erase(entity);
         items.erase(entity);
+        rangedAbilities.erase(entity);
+        floatingTexts.erase(entity);
     }
 
     
@@ -53,6 +57,7 @@ public:
         stats.clear();
         stairs.clear();
         items.clear();
-        
+        rangedAbilities.clear();
+        floatingTexts.clear();
     }
 };
